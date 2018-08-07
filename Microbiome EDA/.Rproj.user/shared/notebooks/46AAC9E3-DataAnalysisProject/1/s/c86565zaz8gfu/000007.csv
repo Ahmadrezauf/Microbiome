@@ -1,0 +1,5 @@
+"0","microbeCounts <- as.data.frame(microbeCounts)"
+"0","rownames(microbeCounts) <- microbeCounts$`#OTU ID`"
+"0","microbeCounts <- microbeCounts %>% "
+"0","  select(-c(`#OTU ID`))"
+"0","pheatmap(microbeCounts)"

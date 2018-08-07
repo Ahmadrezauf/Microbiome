@@ -1,0 +1,13 @@
+"0","microbeCounts <- read_tsv(""./data/16s_taxonomic_profiles.tsv"")"
+"2","Parsed with column specification:
+cols(
+  .default = col_double(),
+  `#OTU ID` = col_character(),
+  taxonomy = col_character()
+)
+"
+"2","See spec(...) for full column specifications.
+"
+"0","microbeTaxonomy <- microbeCounts$taxonomy"
+"0","microbeCounts %>% "
+"0","  select(-c(taxonomy)) -> microbeCounts"

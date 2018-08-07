@@ -1,0 +1,24 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1532253314891.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2894664492",
+    "id" : "7E7A5652",
+    "lastKnownWriteTime" : 1533643225,
+    "last_content_update" : 1533643225166,
+    "path" : "~/Documents/Data analysis/Microbiome EDA/DataAnalysisProject.Rmd",
+    "project_path" : "DataAnalysisProject.Rmd",
+    "properties" : {
+        "cursorPosition" : "475,0",
+        "last_setup_crc32" : "",
+        "scrollLine" : "467",
+        "tempName" : "Untitled3"
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

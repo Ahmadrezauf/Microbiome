@@ -1,0 +1,5 @@
+"0","pc <- prcomp(x = microbeCounts, center = F , scale. = F)"
+"0","eigv = round(pc$sdev^2/sum(pc$sdev^2)*100, 2)"
+"0","eigv = data.frame(c(1:178),eigv)"
+"0","names(eigv) = c('PCs','Variance')"
+"0","plot(eigv,type = ""b"",col = ""darkblue"",lwd = 2);grid()"

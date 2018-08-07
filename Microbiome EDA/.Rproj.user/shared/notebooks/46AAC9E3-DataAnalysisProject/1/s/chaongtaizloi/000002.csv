@@ -1,0 +1,42 @@
+"0","metadata <- read_csv(""./data/hmp2_metadata.csv"")"
+"2","Duplicated column names deduplicated: 'If yes, how frequently do you take them?' => 'If yes, how frequently do you take them?_1' [112], 'Weight' => 'Weight_1' [234], 'Location' => 'Location_1' [300], 'What is the endoscopic grading of severity?' => 'What is the endoscopic grading of severity?_1' [301], 'Location' => 'Location_2' [305], 'What is the endoscopic grading of severity?' => 'What is the endoscopic grading of severity?_2' [306], 'Location' => 'Location_3' [307], 'What is the endoscopic grading of severity?' => 'What is the endoscopic grading of severity?_3' [308], 'Location' => 'Location_4' [309], 'What is the endoscopic grading of severity?' => 'What is the endoscopic grading of severity?_4' [310], 'Behavior (B)' => 'Behavior (B)_1' [314], 'Extent (E)' => 'Extent (E)_1' [315], 'Type of surgery:' => 'Type of surgery:_1' [386], 'Procedure' => 'Procedure_1' [391], 'Type of surgery:' => 'Type of surgery:_2' [393], 'Type of surgery:' => 'Type of surgery:_3' [394], 'Type of surgery:' => 'Type of surgery:_4' [395], 'Pyoderma gangrenosum' => 'Pyoderma gangrenosum_1' [421], 'Erythema nodosum' => 'Erythema nodosum_1' [422], 'Uveitis' => 'Uveitis_1' [423], 'Ileum' => 'Ileum_1' [438], 'Right Colon' => 'Right Colon_1' [439], 'Transverse Colon' => 'Transverse Colon_1' [440], 'Left Colon' => 'Left Colon_1' [441], 'Rectum' => 'Rectum_1' [442], 'Total' => 'Total_1' [443], 'Ileum' => 'Ileum_2' [444], 'Right Colon' => 'Right Colon_2' [445], 'Transverse Colon' => 'Transverse Colon_2' [446], 'Left Colon' => 'Left Colon_2' [447], 'Rectum' => 'Rectum_2' [448], 'Total' => 'Total_2' [449], 'Ileum' => 'Ileum_3' [450], 'Right Colon' => 'Right Colon_3' [451], 'Transverse Colon' => 'Transverse Colon_3' [452], 'Left Colon' => 'Left Colon_3' [453], 'Rectum' => 'Rectum_3' [454], 'Total' => 'Total_3' [455], 'Partial Endoscopy' => 'Partial Endoscopy_1' [457]"
+"2","Parsed with column specification:
+cols(
+  .default = col_character(),
+  week_num = col_integer(),
+  interval_days = col_integer(),
+  visit_num = col_integer(),
+  total_reads = col_integer(),
+  IntervalSequence = col_integer(),
+  ProjectSpecificID = col_integer(),
+  `Age at diagnosis` = col_integer(),
+  `Number of flora tubes collected:` = col_integer(),
+  `Rectum Flora:` = col_integer(),
+  `Ileum flora:` = col_integer(),
+  `Other inflamed flora:` = col_integer(),
+  `Non-inflamed flora:` = col_integer(),
+  `Number of tubes collected for epithelial cell biopsies:` = col_integer(),
+  `Rectum cell biopsy:` = col_integer(),
+  `Ileum cell biopsy:` = col_integer(),
+  `Other non-inflamed cell biopsy:` = col_integer(),
+  `Number of DNA/RNA tubes collected:` = col_integer(),
+  consent_age = col_integer(),
+  `If no, in what year did you come to the United States?` = col_integer(),
+  `If yes, how many times?` = col_integer()
+  # ... with 24 more columns
+)
+"
+"2","See spec(...) for full column specifications.
+"
+"2","number of columns of result is not a multiple of vector length (arg 1)"
+"2","6 parsing failures.
+row [38;5;246m# A tibble: 5 x 5[39m col     row col              expected               actual file                       expected   [3m[38;5;246m<int>[39m[23m [3m[38;5;246m<chr>[39m[23m            [3m[38;5;246m<chr>[39m[23m                  [3m[38;5;246m<chr>[39m[23m  [3m[38;5;246m<chr>[39m[23m                      actual [38;5;250m1[39m  [4m2[24m834 week_num         no trailing characters .0     './data/hmp2_metadata.csv' file [38;5;250m2[39m  [4m2[24m834 interval_days    no trailing characters .0     './data/hmp2_metadata.csv' row [38;5;250m3[39m  [4m2[24m834 visit_num        no trailing characters .0     './data/hmp2_metadata.csv' col [38;5;250m4[39m  [4m2[24m834 total_reads      no trailing characters .0     './data/hmp2_metadata.csv' expected [38;5;250m5[39m  [4m2[24m834 Age at diagnosis no trailing characters .0     './data/hmp2_metadata.csv'
+... ................................. ... ................................................................................. ........ .............................................................................................................................................................................................................. ...... .......................................................................................................... .... .......................................................................................................... ... .......................................................................................................... ... .......................................................................................................... ........ ..........................................................................................................
+See problems(...) for more details.
+"
+"0","length(colnames(metadata))"
+"1","[1]"
+"1"," 489"
+"1","
+"
+"0","  "

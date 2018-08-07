@@ -1,0 +1,2 @@
+"0","plot(summary(pc)$importance[3,], type=""l"","
+"0","     ylab=""%variance explained"", xlab=""nth component (decreasing order)"")"

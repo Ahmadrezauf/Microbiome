@@ -1,0 +1,488 @@
+---
+title: "DataAnalysisProject"
+author: "Ahmadreza Yousefkhani"
+date: "July 22, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This report is continuation of the first phase. First phase was an overview of data and being familiar with its concept and a brief overview on the data like distribution of data in multiple levels. After that I tried to meet microbiologists and be more familiar. In this phase, I'm going to explore the data and find features. There are multiple problems like normalization and dimension reduction that I'm going to test multiple ways to study the data and find responsible factors for the phenotypes.
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(highcharter)
+library(stringr)
+library(tidyr)
+library(plotly)
+library(Rtsne)
+library(pheatmap)
+library(limma)
+
+library(coin)
+library(destiny)
+```
+
+
+## Loading the data 
+Rows are multiple OTUs and columns are samples. 
+Also there is a column that is more description about the data and can be collected as a vector and there is a mapping between 'OTU ID' and taxonomy. 
+```{r}
+microbeCounts <- read_tsv("./data/16s_taxonomic_profiles.tsv")
+microbeTaxonomy <- microbeCounts$taxonomy
+microbeCounts %>% 
+  select(-c(taxonomy)) -> microbeCounts
+```
+Now loading the metadata:
+```{r , warning=F}
+metadata <- read_csv("./data/hmp2_metadata.csv")
+length(colnames(metadata))
+  
+```
+There are plenty of factors that can be studied and I'm going to study effect of multiple factors and their correlation with a disease named IBD that is described more in last reports.
+```{r}
+unique(metadata$diagnosis)
+```
+This disease has two types named "CD" and "UC" and I'm using them like each other! 
+```{r}
+metadata %>% 
+  filter(`External ID` %in% colnames(microbeCounts)) -> metadata
+groups <- metadata %>% 
+  select(`External ID` , diagnosis) %>% 
+  mutate(isPatient = ifelse(diagnosis == "CD" | diagnosis == "UC" , 1 , 0)) %>% 
+  select(`External ID` , isPatient)
+sum(groups == 1)
+sum(groups == 0)
+```
+### Correlation heatmap
+In order to see correlation between samples, we can use heatmp:
+```{r}
+microbeCounts <- as.data.frame(microbeCounts)
+rownames(microbeCounts) <- microbeCounts$`#OTU ID`
+microbeCounts <- microbeCounts %>% 
+  select(-c(`#OTU ID`))
+
+pheatmap(microbeCounts)
+```
+It seems that we should look at statistics other than correlation!
+
+### Dimension Reduction
+As we have 982 features and 178 samples, we can use lower dimensions to see if the samples can be clustered and the quality of clustering.
+
+## PCA
+In PCA we try to find a linear combination of the features. Here means that linear combination of microbes. Lets see what happens:
+```{r}
+pc <- prcomp(x = microbeCounts, center = F , scale. = F)
+
+eigv = round(pc$sdev^2/sum(pc$sdev^2)*100, 2)
+eigv = data.frame(c(1:178),eigv)
+names(eigv) = c('PCs','Variance')
+plot(eigv,type = "b",col = "darkblue",lwd = 2);grid()
+```
+We can visualize PCA in multiple ways to see its usefulness:
+```{r}
+plot(summary(pc)$importance[3,], type="l",
+     ylab="%variance explained", xlab="nth component (decreasing order)")
+abline(h=0.99,col="red");abline(v = 32,col="red",lty=3)
+
+```
+So it seems that with first PCs contain less than $\%80$ of the total variance. But we can see how are the clusters in lower dimensions:
+```{r}
+pcr <- data.frame(pc$r[,1:3] , group = groups$isPatient)
+ggplot(pcr) + 
+  geom_point(aes(x = PC1 , y = PC2, color = group)) + theme_bw()
+```
+
+It is not satisfying in 2 dimensions. Now visualizing PCA in three dimensions:
+```{r}
+plot_ly(data = pcr , x = ~PC1 , y = ~PC2 , z = ~PC3 , color = ~group)
+```
+It is not satisfyable. Maybe we can use non-linear methods and get better results.
+Also It is better to try centering and scaling to somehow normalizing the dataset for PCA:
+```{r}
+pc <- prcomp(x = microbeCounts, center = T , scale. = T)
+plot(summary(pc)$importance[3,], type="l",
+     ylab="%variance explained", xlab="nth component (decreasing order)")
+abline(h=0.99,col="red");abline(v = 32,col="red",lty=3)
+```
+```{r}
+pcr <- data.frame(pc$r[,1:3] , group = groups$isPatient)
+ggplot(pcr) + 
+  geom_point(aes(x = PC1 , y = PC2, color = group)) + theme_bw()
+```
+No!
+
+## tSNE
+tSNE trys to keep the structure of data and projects it in a way that distance between points in higher dimensions be kept in lower dimensions:(this tSNE is between microbes to see whether they have a specific structure or not)
+```{r}
+rtsneObj <- Rtsne::Rtsne(X = microbeCounts , dim = 2 , perplexity = 20 , check_duplicates = F)
+tsneCoords <- rtsneObj$Y
+colnames(tsneCoords) <- c("X" , "Y")
+ggplot(as.data.frame(tsneCoords)) + 
+  geom_point(aes(x = X , y = Y)) + 
+  ggtitle("tSNE on Microbes")
+```
+So lets try tSNE on the samples and see whether they can be classified or not:
+```{r}
+rtsneObj <- Rtsne::Rtsne(X = t(as.matrix(microbeCounts)) , dim = 2 , perplexity = 20 , check_duplicates = F , 
+                         pca_center = F , pca_scale =F)
+tsneCoords <- as.data.frame(rtsneObj$Y)
+colnames(tsneCoords) <- c("X" , "Y")
+tsneCoords$group <- groups$isPatient
+ggplot(as.data.frame(tsneCoords)) + 
+  geom_point(aes(x = X , y = Y, color = group)) + 
+  ggtitle("tSNE on Microbes")
+```
+No! it does not! We can also try it on lower perplexities:
+```{r}
+rtsneObj <- Rtsne::Rtsne(X = t(as.matrix(microbeCounts)) , dim = 2 , perplexity = 5 , check_duplicates = F, 
+                         pca_center = F , pca_scale = F)
+tsneCoords <- as.data.frame(rtsneObj$Y)
+colnames(tsneCoords) <- c("X" , "Y")
+tsneCoords$group <- groups$isPatient
+ggplot(as.data.frame(tsneCoords)) + 
+  geom_point(aes(x = X , y = Y, color = group)) + 
+  ggtitle("tSNE on Microbes")
+
+```
+Maybe we can use another dimension reduction methods that are not linear.
+
+### Linear models
+Maybe we can translate composition as a linear and simple transform of microbes and their counts. But as we have a lot of features and few samples, we should remove some features and select the others:
+
+```{r}
+tmp <- microbeCounts
+microbesSum <- rowSums(tmp)
+tmp$sumOfCounts <- microbesSum
+tmp %>% 
+  filter(sumOfCounts > 470) -> tmp
+tmp %>% 
+  select(-c(sumOfCounts)) -> tmp
+microbeCountsWithPheno <- as.data.frame(t(as.data.frame(tmp)))
+microbeCountsWithPheno$isPatient <- groups$isPatient
+
+# To use regression we should only keep 
+fit <- lm(isPatient ~ . , data = microbeCountsWithPheno)
+summary(fit)
+```
+In this model, I tried to fit the phenotype to microbes with high counts but it seems that it is not a good model.
+
+### Generalized linear model
+We can also try poisson model for this counts data:
+```{r}
+fit <- glm(isPatient ~ . , data = microbeCountsWithPheno , family = "binomial")
+summary(fit)
+```
+It is awful and not working. So we can forget using linear model because of two reasons:
+1- To use linear models, you should have more samples than features. In order to overcome this problem, I tried to select microbes with high count. 
+2- The fitted model is awful! All pvalues are high and model description is not good.
+
+#### Normalization 
+```{r}
+boxplot(microbeCounts)
+```
+
+A possible approach is to normalize counts with respect to samples. Maybe counts are higher for samples. 
+I propose a normalization technique with l2 norm. It is as follows:
+```{r}
+NormalizeL2Sqr <- function(iData){
+  require(dplyr)
+  
+  sqrData <- sqrt(iData)
+  sqrData <- as.data.frame(sqrData)
+  
+  iData %>% 
+    colSums(na.rm = T) %>% 
+    sqrt() -> sampleSum
+  
+  if(length(which(sampleSum == 0)) != 0){
+    sqrData <- sqrData[,-which(sampleSum == 0)] # removing rows that their sum is zero!   
+    sampleSum <- sampleSum[-which(sampleSum == 0)]
+    warning("Some samples counts values are zero")
+  }
+  
+  # removing genes that are not expressed!
+  # What should I do??? ***
+  
+  
+  # Too slow!
+  # sqrData <- apply(sqrData , 2 , function(x) x/sqrt(sum(x^2)))
+  if(ncol(sqrData) == 0){
+   stop("All of the microbes's count in samples is zero") 
+  }
+  else{
+    tmp <- lapply(1:ncol(sqrData) , function(i) sqrData[,i] <<- (sqrData[,i]/sampleSum[i]))
+    remove(tmp)
+    sqrData
+  }
+}
+```
+Each element is divided by a factor:
+$$ \frac{x_i}{\Sigma x_j^2}$$
+Now using this method on the data:
+```{r}
+microbeCountsNormalized <- NormalizeL2Sqr(microbeCounts)
+pheatmap(microbeCountsNormalized)
+```
+Its heatmaps looks better than before!
+
+Now using pca on samples again and see if  they can be classified easily:
+```{r}
+pca <- prcomp(microbeCountsNormalized , center = F , scale. = F)
+pcr <- data.frame(pca$r[,1:3] , group = groups$isPatient)
+ggplot(pcr) + 
+  geom_point(aes(x = PC1 , y = PC2, color = group)) + theme_bw()
+```
+No! Let's use tSNE:
+```{r}
+rtsneObj <- Rtsne::Rtsne(X = t(as.matrix(microbeCountsNormalized)) , dim = 2 , perplexity = 5 , check_duplicates = F, 
+                         pca_center = F , pca_scale = F)
+tsneCoords <- as.data.frame(rtsneObj$Y)
+colnames(tsneCoords) <- c("X" , "Y")
+tsneCoords$group <- groups$isPatient
+ggplot(as.data.frame(tsneCoords)) + 
+  geom_point(aes(x = X , y = Y, color = group)) + 
+  ggtitle("tSNE on Microbes")
+```
+
+It seems unsatisfiable. If we use simple k-means clustering it would have multiple mislabeling.
+
+
+#### Multiple hypothesis testing
+We've tested multiple methods but there is anyway a goodway called multiple hypothesis testing to see the differences among the groups. We can 
+We can implement our usual t-test:
+```{r}
+tTest <- function(x1 , x2){
+  x1.mean <- mean(x1)
+  x2.mean <- mean(x2)
+  
+  x1.sd <- sd(x1)
+  x2.sd <- sd(x2)
+  
+  df <- length(x1) + length(x2) - 2
+  
+  # if the variances are somehow equal, pooled variance will be:
+  sps = ((length(x1) - 1) * x1.sd^2 + (length(x2) - 1) * x2.sd^2) / df
+  
+  tstat= abs(x1.mean - x2.mean) / (sqrt(sps) * sqrt(1/length(x1) + 1/length(x2)))
+  
+  pt(tstat , df , lower.tail = F) * 2
+  # t.test in R is two sided
+}
+```
+
+```{r}
+groups %>% 
+  filter(isPatient == 1) -> tmp
+microbeCountsPatients <- microbeCounts[,tmp$`External ID`]
+patientsColumn <- dim(microbeCountsPatients)[2]
+#dim(microbeCounts)
+groups %>% 
+  filter(isPatient == 0) -> tmp
+microbeCountsHealthy <- microbeCounts[,tmp$`External ID`]
+
+orderedDataSet <- cbind(microbeCountsPatients , microbeCountsHealthy)
+
+tTestDEA <- apply(orderedDataSet , 1 , function(i) {
+    x1 <- i[1:patientsColumn]
+    x2 <- i[(patientsColumn + 1):ncol(orderedDataSet)]
+    tTest(x1 =x1 , x2 = x2)
+})
+ 
+DEATtest <- data.frame(MicrobeName = names(tTestDEA) , P_value = tTestDEA , stringsAsFactors = F)
+DEATtest <- subset(DEATtest , P_value < 0.05)
+dim(DEATtest)
+
+```
+We can see that 112 microbes are selected via a simple multiple hypothesis testing.
+But an important problem in multiple hypothesis testing is correcting p.values. I first try Bonferroni correction to see and have a sketch of pvalues:
+```{r}
+
+DEATtestB <- subset(DEATtest , P_value < (0.05 / dim(DEATtest)[1]))
+dim(DEATtestB)
+DEATtestB$MicrobeName
+```
+Only five microbes remained.
+We can also try FDR correction:
+```{r}
+tTestDEA <- apply(orderedDataSet , 1 , function(i) {
+    x1 <- i[1:patientsColumn]
+    x2 <- i[(patientsColumn + 1):ncol(orderedDataSet)]
+    tTest(x1 =x1 , x2 = x2)
+})
+ 
+DEATtest <- data.frame(MicrobeName = names(tTestDEA) , P_value = tTestDEA , stringsAsFactors = F)
+adjustedPValues <- p.adjust(DEATtest$P_value , method = "fdr")
+DEATtestFDR <- DEATtest
+DEATtestFDR$P_value <- adjustedPValues
+subset(DEATtestFDR , P_value < 0.05)
+selectedMicrobes.ttest <- DEATtestFDR %>% 
+  filter(P_value < 0.05)
+selectedMicrobes.ttest <- selectedMicrobes.ttest$MicrobeName
+```
+Only five microbes are remained. And obviously, this genes are similar to the one selected with Bonferroni method:
+```{r}
+intersect(DEATtestB$MicrobeName , selectedMicrobes.ttest)
+```
+
+## Permutation test
+We can also use permutation test instead of t-test because of forgetting normality assumption:
+```{r , warning=F}
+orderedDataSet$microbeCounts <- rowSums(orderedDataSet)
+tmpRowNames <- rownames(orderedDataSet)
+zeroMicrobes <- rownames(orderedDataSet[which(orderedDataSet$microbeCounts == 0),])
+
+orderedDataSet %>% 
+  filter(microbeCounts != 0) -> orderedDataSet
+dim(orderedDataSet)
+orderedDataSet %>% 
+  select(-c(microbeCounts)) -> orderedDataSet
+tmpRowNames <- setdiff(tmpRowNames , zeroMicrobes)
+rownames(orderedDataSet) <- tmpRowNames
+
+permTest <- apply(orderedDataSet , 1 , function(i) {
+    x1 <- i[1:patientsColumn]
+    x2 <- i[(patientsColumn + 1):ncol(orderedDataSet)]
+
+    x1df <- data.frame(class = "patient" , counts = x1)
+    x2df <- data.frame(class = "healthy" , counts = x2)
+    tmp <- rbind(x1df , x2df)
+    coin::oneway_test(counts ~ class , data = tmp , distribution = approximate(B=1000) , )
+})
+
+DEAPermTest <- data.frame()
+for(i in 1:length(permTest)){
+  DEAPermTest <- rbind(DEAPermTest , data.frame(MicrobeName = rownames(orderedDataSet)[i], P_value = coin::pvalue(permTest[[i]])[1]))
+}
+head(DEAPermTest)
+
+adjustedPValues <- p.adjust(DEAPermTest$P_value , method = "fdr")
+DEAPermTestFDR <- DEAPermTest
+DEAPermTestFDR$P_value <- adjustedPValues
+subset(DEAPermTestFDR , P_value < 0.05)
+selectedMicrobes <- DEAPermTestFDR %>% 
+  filter(P_value < 0.05)
+selectedMicrobes.perm <- selectedMicrobes$MicrobeName
+```
+Good! I think I found 8 microbes that are very good in distinguishing the two groups.
+Let's see if there is any similarities between t-test results and permutation test results:
+```{r}
+intersect(selectedMicrobes.ttest , selectedMicrobes.perm)
+```
+So the permuation test results is a super set of t-test results. We can see whether k-means after pca can separate the samples. 
+```{r}
+selectedMicrobes <- union(selectedMicrobes.perm , selectedMicrobes.ttest)
+orderedDataSet.selected <- orderedDataSet[selectedMicrobes , ]
+pca <- prcomp(orderedDataSet.selected , center = F , scale. = F)
+pcr <- data.frame(pca$r[,1:3] , group = groups$isPatient)
+ggplot(pcr) + 
+  geom_point(aes(x = PC1 , y = PC2, color = group)) + theme_bw()
+```
+Anyway it is not satisfying. 
+After that we can see the logstic regression performance for the selected microbes vs phenotype.
+```{r}
+t.orderedDataSet.selected <- as.data.frame(t(orderedDataSet.selected))
+t.orderedDataSet.selected$isPatient <- groups$isPatient
+fit <- glm(isPatient ~ . , data = t.orderedDataSet.selected , family = "binomial")
+summary(fit)
+```
+Hmm, we can see that the intersect has a little p-value so I think this model is not so good for distinguishing between two groups.
+Maybe we can use tSNE and visualize better:
+```{r}
+rtsneObj <- Rtsne::Rtsne(X = t.orderedDataSet.selected , dim = 2 , perplexity = 5 , check_duplicates = F, 
+                         pca_center = F , pca_scale = F)
+tsneCoords <- as.data.frame(rtsneObj$Y)
+colnames(tsneCoords) <- c("X" , "Y")
+tsneCoords$group <- groups$isPatient
+ggplot(as.data.frame(tsneCoords)) + 
+  geom_point(aes(x = X , y = Y, color = group)) + 
+  ggtitle("tSNE on Microbes")
+```
+
+It is not that amazing, but it is better than previous parts and I think that we selected better signals. Because the first one contained a lot of noise and that noise made our clustering worse.
+But if we normalize the data and try tSNE again:
+```{r}
+rtsneObj <- Rtsne::Rtsne(X = t.orderedDataSet.selected , dim = 2 , perplexity = 5 , check_duplicates = F, 
+                         pca_center = T , pca_scale = T)
+tsneCoords <- as.data.frame(rtsneObj$Y)
+colnames(tsneCoords) <- c("X" , "Y")
+tsneCoords$group <- groups$isPatient
+result <- ggplot(as.data.frame(tsneCoords)) + 
+  geom_point(aes(x = X , y = Y, color = group)) + 
+  ggtitle("tSNE on Microbes")
+result
+```
+Wow! amazing. I think we can separate the samples now. Although normal samples are not so close to each other, but patients samples are away from normal samples and simple k-means could have less mislabeling:
+```{r}
+kCluster <- kmeans(t.orderedDataSet.selected , centers = 2  , nstart = 20 , iter.max = 10000)
+kCluster$cluster
+sum(kCluster$cluster == 2)
+sum(kCluster$cluster == 1)
+```
+It is not satisfying because we have we have 133 samples from one class and 45 samples from the other class.
+So we may use another algorithm for clustering.
+
+#### Normalized cut
+We also can use another clustering technique that is useful when having a graph. There is a good idea to:
+1- dimensionality reduction with diffusion maps.
+2- Separating the points with DC1. Because of eigen values, we can say that samples that are before DC1 $= 0$, could be from the other group.
+This method could be very useful for clustering. But we should see the results to decide between them.
+```{r}
+dm2 <- DiffusionMap(data = t(as.matrix(orderedDataSet)) , n_eigs = 2, density_norm = F , distance = "euclidean", k = 20)
+# Having duplicates in expression and removing them
+
+tmp <- orderedDataSet[!duplicated(t(as.matrix(orderedDataSet))),]
+tmpSampName <- setdiff(colnames(tmp) , groups$`External ID`)
+groupTmp <- groups %>% filter(`External ID` %in% colnames(tmp))
+groupTmp <- groupTmp[!duplicated(groupTmp),]
+tmp <- tmp %>% 
+  select(-c("206672.1"))
+dcf <- data.frame(DC1 = eigenvectors(dm2)[,1] , DC2 = eigenvectors(dm2)[,2] ,
+                  name = colnames(tmp) , gr = groupTmp$isPatient)
+
+p <- ggplot(dcf) + 
+  geom_point(aes(x = DC1 , y = DC2 , color = gr)) 
+p
+```
+So it is not that satisfying but if we subset the data and reduce our features to the selected microbes,
+```{r}
+dm2 <- DiffusionMap(data = t.orderedDataSet.selected , n_eigs = 2, density_norm = F , distance = "euclidean", k = 20)
+# Having duplicates in expression and removing them
+
+tmp <- t.orderedDataSet.selected[!duplicated(t.orderedDataSet.selected),]
+tmpSampName <- setdiff(rownames(tmp) , groups$`External ID`)
+groupTmp <- groups %>% filter(`External ID` %in% rownames(tmp))
+ids <- unique(groups$`External ID`)
+groupTmp <- groupTmp[!duplicated(groupTmp),]
+dcf <- data.frame(DC1 = eigenvectors(dm2)[,1] , DC2 = eigenvectors(dm2)[,2] ,
+                  name = rownames(tmp) , gr = groupTmp$isPatient)
+
+p <- ggplot(dcf) + 
+  geom_point(aes(x = DC1 , y = DC2 , color = gr)) 
+p
+```
+So it seems that it is not a good method for this work.
+
+So I think the list of responsible signals is:
+```{r}
+selectedMicrobes
+```
+
+This microbes could be validated in laboratory but I think with a data analysis approach this is was a good approach.
+
+##### Conclusion
+I tried a lot of ways and changed workflow multiple times to find the responsible features(microbes). I tried several normalization techniques like the simple one used in PCA or the method that I defined that was a l2 norm with square root. After that I tried multiple models like linear model or logsitics regression. I also used dimension reduction techniques like PCA or tSNE to visualize the data and see whether we could use simple k-means afterwards. I also tried a method named "Normalized-cut" and implemented it in a simple way using diffusion maps. They models were not so useful.
+Finally, I found my way in using multiple hypothesis testing. I tried t-test and permutation test. I adjusted the p-values with fdr method and merged two microbe sets that were defined by selecting p-values below 0.05. Then I tried to do the visualization with this method. First try was without normalization that was unsuccessful but the next try was with normalization that I centered and scaled the samples, and used tSNE. The results were satisfying. The resulted plot is as follows:
+```{r}
+result
+```
+
+ In this plot, I think that we can distinguish between normal and patient samples. Normal samples are defined by black color and patient samples are defined with blue. Although the patinets samples are not too close to each other, we can distinguish between normal and patient samples.
+So I think the selected microbes were good features for distinguishing between normal and patient samples.
+
+
+

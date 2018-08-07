@@ -1,0 +1,8 @@
+"0","rtsneObj <- Rtsne::Rtsne(X = t(as.matrix(microbeCounts)) , dim = 2 , perplexity = 5 , check_duplicates = F, "
+"0","                         pca_center = F , pca_scale = F)"
+"0","tsneCoords <- as.data.frame(rtsneObj$Y)"
+"0","colnames(tsneCoords) <- c(""X"" , ""Y"")"
+"0","tsneCoords$group <- groups$isPatient"
+"0","ggplot(as.data.frame(tsneCoords)) + "
+"0","  geom_point(aes(x = X , y = Y, color = group)) + "
+"0","  ggtitle(""tSNE on Microbes"")"

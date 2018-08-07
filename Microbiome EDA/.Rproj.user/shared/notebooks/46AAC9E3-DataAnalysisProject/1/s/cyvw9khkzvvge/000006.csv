@@ -1,0 +1,2 @@
+"0","microbeCountsNormalized <- NormalizeL2Sqr(microbeCounts)"
+"0","pheatmap(microbeCountsNormalized)"

@@ -1,0 +1,3 @@
+"0","pc <- prcomp(x = microbeCounts, center = T , scale. = T)"
+"0","plot(summary(pc)$importance[3,], type=""l"","
+"0","     ylab=""%variance explained"", xlab=""nth component (decreasing order)"")"

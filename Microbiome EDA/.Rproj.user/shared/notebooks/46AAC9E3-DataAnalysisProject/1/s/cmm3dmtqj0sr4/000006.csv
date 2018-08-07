@@ -1,0 +1,6 @@
+"0","rtsneObj <- Rtsne::Rtsne(X = microbeCounts , dim = 2 , perplexity = 20 , check_duplicates = F)"
+"0","tsneCoords <- rtsneObj$Y"
+"0","colnames(tsneCoords) <- c(""X"" , ""Y"")"
+"0","ggplot(as.data.frame(tsneCoords)) + "
+"0","  geom_point(aes(x = X , y = Y)) + "
+"0","  ggtitle(""tSNE on Microbes"")"
